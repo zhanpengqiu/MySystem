@@ -1,0 +1,13 @@
+opencv-python
+PyQt5
+nibabel
+distro
+pydantic
+tqdm
+frozendict
+platformdirs
+requests
+cffi
+scikit-image
+pyvista
+vtk
