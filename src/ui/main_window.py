@@ -416,67 +416,83 @@ class MainWindow(QMainWindow):
         self.overlay_display_group.hide()
     
     def create_3d_display_tab(self):
-        """创建3D显示选项卡"""
-        tab_3d = QWidget()
-        self.display_tab_widget.addTab(tab_3d, '3D显示')
+        """创建ZXY切片展示选项卡"""
+        tab_zxy = QWidget()
+        self.display_tab_widget.addTab(tab_zxy, 'ZXY切片展示')
         
         # 创建布局
-        layout = QVBoxLayout(tab_3d)
+        layout = QVBoxLayout(tab_zxy)
         
-        # 创建3D控制组
-        control_group = QGroupBox('3D控制')
-        layout.addWidget(control_group)
+        # 创建ZXY坐标输入组
+        input_group = QGroupBox('ZXY坐标输入')
+        layout.addWidget(input_group)
         
-        control_layout = QHBoxLayout(control_group)
+        input_layout = QHBoxLayout(input_group)
         
-        # 重置视角按钮
-        self.reset_view_button = QPushButton('重置视角')
-        self.reset_view_button.clicked.connect(self.reset_3d_view)
-        control_layout.addWidget(self.reset_view_button)
+        # Z坐标输入
+        input_layout.addWidget(QLabel('Z:'))
+        self.z_spin_box = QSpinBox()
+        self.z_spin_box.setMinimum(0)
+        self.z_spin_box.setMaximum(1000)
+        input_layout.addWidget(self.z_spin_box)
         
-        # 显示模式选择
-        self.display_mode_combo = QComboBox()
-        self.display_mode_combo.addItems(['单独显示', '叠加显示'])
-        self.display_mode_combo.currentIndexChanged.connect(self.update_3d_display)
-        control_layout.addWidget(self.display_mode_combo)
+        # X坐标输入
+        input_layout.addWidget(QLabel('X:'))
+        self.x_spin_box = QSpinBox()
+        self.x_spin_box.setMinimum(0)
+        self.x_spin_box.setMaximum(1000)
+        input_layout.addWidget(self.x_spin_box)
         
-        # 添加全屏显示按钮
-        self.fullscreen_button = QPushButton('全屏显示')
-        self.fullscreen_button.clicked.connect(self.show_fullscreen_3d)
-        control_layout.addWidget(self.fullscreen_button)
+        # Y坐标输入
+        input_layout.addWidget(QLabel('Y:'))
+        self.y_spin_box = QSpinBox()
+        self.y_spin_box.setMinimum(0)
+        self.y_spin_box.setMaximum(1000)
+        input_layout.addWidget(self.y_spin_box)
         
-        # 创建3D显示区域
-        vis_group = QGroupBox('3D结果展示')
-        layout.addWidget(vis_group)
+        # 显示按钮
+        self.show_slice_button = QPushButton('显示切片')
+        self.show_slice_button.clicked.connect(self.show_zxy_slice)
+        input_layout.addWidget(self.show_slice_button)
         
-        vis_layout = QVBoxLayout(vis_group)
+        # 创建切片显示区域
+        slice_group = QGroupBox('切片展示')
+        layout.addWidget(slice_group)
         
-        # 创建3D显示标签
-        self.vis_3d_label = QLabel()
-        self.vis_3d_label.setAlignment(Qt.AlignCenter)
-        self.vis_3d_label.setText('3D结果将显示在这里')
-        vis_layout.addWidget(self.vis_3d_label)
+        slice_layout = QHBoxLayout(slice_group)
         
-        # 创建3D操作说明
-        info_group = QGroupBox('操作说明')
-        layout.addWidget(info_group)
+        # Z轴切片显示
+        self.z_slice_group = QGroupBox('Z轴切片')
+        slice_layout.addWidget(self.z_slice_group)
+        slice_layout.setStretchFactor(self.z_slice_group, 1)
         
-        info_layout = QVBoxLayout(info_group)
+        z_slice_layout = QVBoxLayout(self.z_slice_group)
+        self.z_slice_label = QLabel()
+        self.z_slice_label.setAlignment(Qt.AlignCenter)
+        self.z_slice_label.setText('Z轴切片将显示在这里')
+        z_slice_layout.addWidget(self.z_slice_label)
         
-        info_text = QTextEdit()
-        info_text.setReadOnly(True)
-        info_text.setText('''3D操作说明：
-- 鼠标左键：旋转视角
-- 鼠标右键：平移视角
-- 鼠标滚轮：缩放视角
-- 重置视角：点击"重置视角"按钮
-- 切换显示模式：在下拉菜单中选择"单独显示"或"叠加显示"
-- 全屏显示：点击"全屏显示"按钮打开独立窗口
-''')
+        # X轴切片显示
+        self.x_slice_group = QGroupBox('X轴切片')
+        slice_layout.addWidget(self.x_slice_group)
+        slice_layout.setStretchFactor(self.x_slice_group, 1)
         
-        # 存储3D窗口实例
-        self.three_d_window = None
-        info_layout.addWidget(info_text)
+        x_slice_layout = QVBoxLayout(self.x_slice_group)
+        self.x_slice_label = QLabel()
+        self.x_slice_label.setAlignment(Qt.AlignCenter)
+        self.x_slice_label.setText('X轴切片将显示在这里')
+        x_slice_layout.addWidget(self.x_slice_label)
+        
+        # Y轴切片显示
+        self.y_slice_group = QGroupBox('Y轴切片')
+        slice_layout.addWidget(self.y_slice_group)
+        slice_layout.setStretchFactor(self.y_slice_group, 1)
+        
+        y_slice_layout = QVBoxLayout(self.y_slice_group)
+        self.y_slice_label = QLabel()
+        self.y_slice_label.setAlignment(Qt.AlignCenter)
+        self.y_slice_label.setText('Y轴切片将显示在这里')
+        y_slice_layout.addWidget(self.y_slice_label)
     
     def create_preprocessing_tab(self):
         """创建预处理选项卡"""
@@ -1736,25 +1752,107 @@ class MainWindow(QMainWindow):
             self.slice_spin_box.setMaximum(1000)
             self.slice_spin_box.setValue(1)
     
-    def show_fullscreen_3d(self):
-        """显示全屏3D窗口"""
-        # 检查是否有已加载的数据
-        has_image = hasattr(self, 'image_data') and self.image_data is not None
-        has_label = hasattr(self, 'label_data') and self.label_data is not None
-        
-        if not has_image and not has_label:
-            self.status_bar.showMessage('请先加载2D图像或标签数据，然后再尝试3D显示。')
+    def show_zxy_slice(self):
+        """根据ZXY坐标显示对应切片"""
+        if self.image_data is None:
+            self.status_bar.showMessage('请先加载图像文件')
             return
         
-        # 创建或显示3D窗口
-        if self.three_d_window is None:
-            self.three_d_window = ThreeDWindow(self)
-        else:
-            self.three_d_window.show()
-            self.three_d_window.raise_()
-        
-        # 更新3D显示
-        self.three_d_window.update_3d_display()
+        try:
+            # 获取输入的ZXY坐标
+            z = self.z_spin_box.value()
+            x = self.x_spin_box.value()
+            y = self.y_spin_box.value()
+            
+            # 检查坐标是否在有效范围内
+            depth, height, width = self.image_data.shape
+            
+            if z >= depth or y >= height or x >= width:
+                self.status_bar.showMessage('坐标超出图像范围')
+                return
+            
+            # 显示Z轴切片（XY平面）
+            z_slice = self.image_display.get_slice(self.image_data, z, axis=0)
+            normalized_z = self.image_display.normalize_slice(z_slice)
+            
+            height_z, width_z = normalized_z.shape
+            bytes_per_line_z = width_z
+            q_image_z = QImage(bytes(normalized_z.data), width_z, height_z, bytes_per_line_z, QImage.Format_Grayscale8)
+            pixmap_z = QPixmap.fromImage(q_image_z)
+            max_size = 300
+            scaled_pixmap_z = pixmap_z.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.z_slice_label.setPixmap(scaled_pixmap_z)
+            
+            # 显示X轴切片（YZ平面）
+            x_slice = self.image_display.get_slice(self.image_data, x, axis=2)
+            x_slice = x_slice.T  # 转置以正确显示
+            normalized_x = self.image_display.normalize_slice(x_slice)
+            
+            height_x, width_x = normalized_x.shape
+            bytes_per_line_x = width_x
+            q_image_x = QImage(bytes(normalized_x.data), width_x, height_x, bytes_per_line_x, QImage.Format_Grayscale8)
+            pixmap_x = QPixmap.fromImage(q_image_x)
+            scaled_pixmap_x = pixmap_x.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.x_slice_label.setPixmap(scaled_pixmap_x)
+            
+            # 显示Y轴切片（XZ平面）
+            y_slice = self.image_display.get_slice(self.image_data, y, axis=1)
+            y_slice = y_slice.T  # 转置以正确显示
+            normalized_y = self.image_display.normalize_slice(y_slice)
+            
+            height_y, width_y = normalized_y.shape
+            bytes_per_line_y = width_y
+            q_image_y = QImage(bytes(normalized_y.data), width_y, height_y, bytes_per_line_y, QImage.Format_Grayscale8)
+            pixmap_y = QPixmap.fromImage(q_image_y)
+            scaled_pixmap_y = pixmap_y.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.y_slice_label.setPixmap(scaled_pixmap_y)
+            
+            # 如果有标签，也显示标签
+            if hasattr(self, 'label_data') and self.label_data is not None:
+                # 显示Z轴标签切片
+                z_label_slice = self.image_display.get_slice(self.label_data, z, axis=0)
+                normalized_z_label = self.image_display.normalize_slice(z_label_slice)
+                
+                # 生成融合图像
+                overlay_z = self.image_display.overlay_mask(normalized_z, z_label_slice)
+                height_oz, width_oz, _ = overlay_z.shape
+                bytes_per_line_oz = width_oz * 3
+                q_overlay_z = QImage(bytes(overlay_z.data), width_oz, height_oz, bytes_per_line_oz, QImage.Format_RGB888)
+                pixmap_oz = QPixmap.fromImage(q_overlay_z)
+                scaled_pixmap_oz = pixmap_oz.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.z_slice_label.setPixmap(scaled_pixmap_oz)
+                
+                # 显示X轴标签切片
+                x_label_slice = self.image_display.get_slice(self.label_data, x, axis=2)
+                x_label_slice = x_label_slice.T
+                normalized_x_label = self.image_display.normalize_slice(x_label_slice)
+                
+                # 生成融合图像
+                overlay_x = self.image_display.overlay_mask(normalized_x, x_label_slice)
+                height_ox, width_ox, _ = overlay_x.shape
+                bytes_per_line_ox = width_ox * 3
+                q_overlay_x = QImage(bytes(overlay_x.data), width_ox, height_ox, bytes_per_line_ox, QImage.Format_RGB888)
+                pixmap_ox = QPixmap.fromImage(q_overlay_x)
+                scaled_pixmap_ox = pixmap_ox.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.x_slice_label.setPixmap(scaled_pixmap_ox)
+                
+                # 显示Y轴标签切片
+                y_label_slice = self.image_display.get_slice(self.label_data, y, axis=1)
+                y_label_slice = y_label_slice.T
+                normalized_y_label = self.image_display.normalize_slice(y_label_slice)
+                
+                # 生成融合图像
+                overlay_y = self.image_display.overlay_mask(normalized_y, y_label_slice)
+                height_oy, width_oy, _ = overlay_y.shape
+                bytes_per_line_oy = width_oy * 3
+                q_overlay_y = QImage(bytes(overlay_y.data), width_oy, height_oy, bytes_per_line_oy, QImage.Format_RGB888)
+                pixmap_oy = QPixmap.fromImage(q_overlay_y)
+                scaled_pixmap_oy = pixmap_oy.scaled(max_size, max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.y_slice_label.setPixmap(scaled_pixmap_oy)
+            
+            self.status_bar.showMessage(f'显示Z={z}, X={x}, Y={y}的切片')
+        except Exception as e:
+            self.status_bar.showMessage(f'错误: {str(e)}')
 
 class ThreeDWindow(QMainWindow):
     """3D显示独立窗口"""
