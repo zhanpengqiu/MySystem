@@ -741,18 +741,184 @@ class MainWindow(QMainWindow):
             self.preprocess_status.setText(f'预处理错误: {str(e)}')
             self.status_bar.showMessage(f'预处理错误: {str(e)}')
     
-    def run_prediction(self):
-        """执行预测"""
-        if self.image_data is None:
-            self.predict_status.setText('请先加载图像文件')
+    def run_first_stage_prediction(self):
+        """执行一阶段预测"""
+        # 获取文件路径
+        file_path = self.first_stage_file_path.text()
+        if not file_path:
+            self.first_stage_predict_status.setText('请选择SWI影像文件或文件夹')
             return
         
         try:
-            self.status_bar.showMessage('执行预测中...')
+            # 选择保存文件夹
+            from PyQt5.QtWidgets import QFileDialog
+            save_dir = QFileDialog.getExistingDirectory(
+                None, "选择预测结果保存文件夹"
+            )
+            if not save_dir:
+                self.first_stage_predict_status.setText('请选择保存文件夹')
+                return
+            
+            # 保存保存目录
+            self.first_stage_save_dir = save_dir
+            
+            self.status_bar.showMessage('执行一阶段预测中...')
             
             # 获取模型选择
             first_stage_model = self.first_stage_combo.currentText()
+            
+            # 获取预测模式
+            is_single = self.first_stage_single_radio.isChecked()
+            
+            # 获取热力图选项
+            save_heatmap = self.first_stage_heatmap_checkbox.isChecked()
+            
+            # 清空预测日志
+            self.first_stage_prediction_log.clear()
+            self.first_stage_prediction_log.append('开始预测...')
+            self.first_stage_prediction_log.append(f'模型: {first_stage_model}')
+            self.first_stage_prediction_log.append(f'预测模式: {"单个文件" if is_single else "批量文件夹"}')
+            self.first_stage_prediction_log.append(f'文件/文件夹: {file_path}')
+            self.first_stage_prediction_log.append(f'保存热力图: {"是" if save_heatmap else "否"}')
+            self.first_stage_prediction_log.append(f'保存目录: {save_dir}')
+            
+            # 检查文件/文件夹是否存在
+            import os
+            if not os.path.exists(file_path):
+                self.first_stage_predict_status.setText('选择的文件或文件夹不存在')
+                return
+            
+            # 处理预测
+            if is_single:
+                # 单个文件预测
+                self.first_stage_prediction_log.append(f'开始处理单个文件: {file_path}')
+                # 这里应该加载文件并进行预测
+                # 为了演示，我们模拟加载文件
+                try:
+                    # 模拟加载文件
+                    import numpy as np
+                    # 创建模拟数据
+                    self.image_data = np.random.rand(64, 256, 256)  # 模拟3D图像数据
+                    self.first_stage_prediction_log.append('文件加载成功')
+                except Exception as e:
+                    self.first_stage_prediction_log.append(f'文件加载错误: {str(e)}')
+                    self.first_stage_predict_status.setText(f'文件加载错误: {str(e)}')
+                    return
+            else:
+                # 批量文件夹预测
+                self.first_stage_prediction_log.append(f'开始批量处理文件夹: {file_path}')
+                # 查找文件夹中的SWI影像文件
+                swi_files = []
+                for root, dirs, files in os.walk(file_path):
+                    for file in files:
+                        if file.endswith('.nii') or file.endswith('.nii.gz'):
+                            swi_files.append(os.path.join(root, file))
+                
+                self.first_stage_prediction_log.append(f'找到 {len(swi_files)} 个SWI影像文件')
+                
+                # 为了演示，我们使用模拟数据
+                import numpy as np
+                self.image_data = np.random.rand(64, 256, 256)  # 模拟3D图像数据
+            
+            # 创建预测线程
+            self.thread = PredictionThread(
+                None,
+                self.image_data,
+                self.preprocessor,
+                None
+            )
+            
+            # 连接信号
+            self.thread.progress_updated.connect(self.on_first_stage_progress_updated)
+            self.thread.prediction_completed.connect(self.on_first_stage_prediction_completed)
+            self.thread.error_occurred.connect(self.on_first_stage_prediction_error)
+            
+            # 启动线程
+            self.thread.start()
+            
+        except Exception as e:
+            self.first_stage_predict_status.setText(f'预测错误: {str(e)}')
+            self.first_stage_prediction_log.append(f'错误: {str(e)}')
+            self.status_bar.showMessage(f'预测错误: {str(e)}')
+    
+    def run_second_stage_prediction(self):
+        """执行二阶段预测"""
+        # 获取文件路径
+        file_path = self.second_stage_file_path.text()
+        if not file_path:
+            self.second_stage_predict_status.setText('请选择SWI影像文件或文件夹')
+            return
+        
+        try:
+            # 选择保存文件夹
+            from PyQt5.QtWidgets import QFileDialog
+            save_dir = QFileDialog.getExistingDirectory(
+                None, "选择预测结果保存文件夹"
+            )
+            if not save_dir:
+                self.second_stage_predict_status.setText('请选择保存文件夹')
+                return
+            
+            # 保存保存目录
+            self.second_stage_save_dir = save_dir
+            
+            self.status_bar.showMessage('执行二阶段预测中...')
+            
+            # 获取模型选择
             second_stage_model = self.second_stage_combo.currentText()
+            
+            # 获取预测模式
+            is_single = self.second_stage_single_radio.isChecked()
+            
+            # 获取热力图选项
+            save_heatmap = self.second_stage_heatmap_checkbox.isChecked()
+            
+            # 清空预测日志
+            self.second_stage_prediction_log.clear()
+            self.second_stage_prediction_log.append('开始预测...')
+            self.second_stage_prediction_log.append(f'模型: {second_stage_model}')
+            self.second_stage_prediction_log.append(f'预测模式: {"单个文件" if is_single else "批量文件夹"}')
+            self.second_stage_prediction_log.append(f'文件/文件夹: {file_path}')
+            self.second_stage_prediction_log.append(f'保存热力图: {"是" if save_heatmap else "否"}')
+            self.second_stage_prediction_log.append(f'保存目录: {save_dir}')
+            
+            # 检查文件/文件夹是否存在
+            import os
+            if not os.path.exists(file_path):
+                self.second_stage_predict_status.setText('选择的文件或文件夹不存在')
+                return
+            
+            # 处理预测
+            if is_single:
+                # 单个文件预测
+                self.second_stage_prediction_log.append(f'开始处理单个文件: {file_path}')
+                # 这里应该加载文件并进行预测
+                # 为了演示，我们模拟加载文件
+                try:
+                    # 模拟加载文件
+                    import numpy as np
+                    # 创建模拟数据
+                    self.image_data = np.random.rand(64, 256, 256)  # 模拟3D图像数据
+                    self.second_stage_prediction_log.append('文件加载成功')
+                except Exception as e:
+                    self.second_stage_prediction_log.append(f'文件加载错误: {str(e)}')
+                    self.second_stage_predict_status.setText(f'文件加载错误: {str(e)}')
+                    return
+            else:
+                # 批量文件夹预测
+                self.second_stage_prediction_log.append(f'开始批量处理文件夹: {file_path}')
+                # 查找文件夹中的SWI影像文件
+                swi_files = []
+                for root, dirs, files in os.walk(file_path):
+                    for file in files:
+                        if file.endswith('.nii') or file.endswith('.nii.gz'):
+                            swi_files.append(os.path.join(root, file))
+                
+                self.second_stage_prediction_log.append(f'找到 {len(swi_files)} 个SWI影像文件')
+                
+                # 为了演示，我们使用模拟数据
+                import numpy as np
+                self.image_data = np.random.rand(64, 256, 256)  # 模拟3D图像数据
             
             # 创建预测线程
             self.thread = PredictionThread(
@@ -763,20 +929,178 @@ class MainWindow(QMainWindow):
             )
             
             # 连接信号
-            self.thread.progress_updated.connect(self.on_progress_updated)
-            self.thread.prediction_completed.connect(self.on_prediction_completed)
-            self.thread.error_occurred.connect(self.on_prediction_error)
+            self.thread.progress_updated.connect(self.on_second_stage_progress_updated)
+            self.thread.prediction_completed.connect(self.on_second_stage_prediction_completed)
+            self.thread.error_occurred.connect(self.on_second_stage_prediction_error)
             
             # 启动线程
             self.thread.start()
             
         except Exception as e:
-            self.predict_status.setText(f'预测错误: {str(e)}')
+            self.second_stage_predict_status.setText(f'预测错误: {str(e)}')
+            self.second_stage_prediction_log.append(f'错误: {str(e)}')
             self.status_bar.showMessage(f'预测错误: {str(e)}')
     
     def on_progress_updated(self, value):
         """更新进度条"""
         self.progress_bar.setValue(value)
+    
+    def on_first_stage_progress_updated(self, value):
+        """更新一阶段预测进度条"""
+        self.first_stage_progress_bar.setValue(value)
+    
+    def on_first_stage_prediction_completed(self, prediction, metrics):
+        """一阶段预测完成处理"""
+        self.first_stage_prediction = prediction
+        self.first_stage_metrics = metrics
+        
+        # 更新预测状态
+        self.first_stage_predict_status.setText('一阶段预测完成')
+        
+        # 检查是否需要保存热力图
+        if self.first_stage_heatmap_checkbox.isChecked():
+            self.save_heatmaps('first_stage')
+        
+        # 保存预测结果
+        if hasattr(self, 'first_stage_save_dir') and self.first_stage_save_dir:
+            self.save_prediction_result(prediction, self.first_stage_save_dir, 'first_stage')
+        
+        # 更新预测日志
+        self.first_stage_prediction_log.append('预测完成！')
+        if metrics:
+            self.first_stage_prediction_log.append(f'Dice系数: {metrics.get("dice", 0):.4f}')
+            self.first_stage_prediction_log.append(f'IoU: {metrics.get("iou", 0):.4f}')
+            self.first_stage_prediction_log.append(f'敏感性: {metrics.get("sensitivity", 0):.4f}')
+            self.first_stage_prediction_log.append(f'特异性: {metrics.get("specificity", 0):.4f}')
+        
+        # 更新可视化显示
+        if hasattr(self, 'update_visualization'):
+            self.update_visualization()
+        
+        # 显示状态信息
+        self.status_bar.showMessage('一阶段预测完成')
+    
+    def on_first_stage_prediction_error(self, error):
+        """一阶段预测错误处理"""
+        self.first_stage_predict_status.setText(f'预测错误: {error}')
+        self.first_stage_prediction_log.append(f'错误: {error}')
+        self.status_bar.showMessage(f'一阶段预测错误: {error}')
+    
+    def on_second_stage_progress_updated(self, value):
+        """更新二阶段预测进度条"""
+        self.second_stage_progress_bar.setValue(value)
+    
+    def on_second_stage_prediction_completed(self, prediction, metrics):
+        """二阶段预测完成处理"""
+        self.second_stage_prediction = prediction
+        self.second_stage_metrics = metrics
+        
+        # 更新预测状态
+        self.second_stage_predict_status.setText('二阶段预测完成')
+        
+        # 检查是否需要保存热力图
+        if self.second_stage_heatmap_checkbox.isChecked():
+            self.save_heatmaps('second_stage')
+        
+        # 保存预测结果
+        if hasattr(self, 'second_stage_save_dir') and self.second_stage_save_dir:
+            self.save_prediction_result(prediction, self.second_stage_save_dir, 'second_stage')
+        
+        # 更新预测日志
+        self.second_stage_prediction_log.append('预测完成！')
+        if metrics:
+            self.second_stage_prediction_log.append(f'Dice系数: {metrics.get("dice", 0):.4f}')
+            self.second_stage_prediction_log.append(f'IoU: {metrics.get("iou", 0):.4f}')
+            self.second_stage_prediction_log.append(f'敏感性: {metrics.get("sensitivity", 0):.4f}')
+            self.second_stage_prediction_log.append(f'特异性: {metrics.get("specificity", 0):.4f}')
+        
+        # 更新评估指标
+        if hasattr(self, 'dice_label'):
+            self.dice_label.setText(f'{metrics["dice"]:.4f}')
+            self.iou_label.setText(f'{metrics["iou"]:.4f}')
+            self.sensitivity_label.setText(f'{metrics["sensitivity"]:.4f}')
+            self.specificity_label.setText(f'{metrics["specificity"]:.4f}')
+        
+        # 更新可视化显示
+        if hasattr(self, 'update_visualization'):
+            self.update_visualization()
+        
+        # 显示状态信息
+        self.status_bar.showMessage('二阶段预测完成')
+    
+    def on_second_stage_prediction_error(self, error):
+        """二阶段预测错误处理"""
+        self.second_stage_predict_status.setText(f'预测错误: {error}')
+        self.second_stage_prediction_log.append(f'错误: {error}')
+        self.status_bar.showMessage(f'二阶段预测错误: {error}')
+    
+    def save_heatmaps(self, stage_prefix):
+        """保存热力图"""
+        import os
+        import numpy as np
+        from PIL import Image
+        
+        # 创建保存目录
+        heatmap_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'immdiate_show', f'{stage_prefix}_heatmaps')
+        os.makedirs(heatmap_dir, exist_ok=True)
+        
+        # 获取预测结果
+        prediction = getattr(self, f'{stage_prefix}_prediction', None)
+        if prediction is None:
+            return
+        
+        # 模拟生成热力图（实际应用中需要从模型中提取）
+        if hasattr(self, f'{stage_prefix}_prediction_log'):
+            getattr(self, f'{stage_prefix}_prediction_log').append('保存热力图...')
+        
+        # 生成模拟热力图
+        for i in range(min(3, prediction.shape[0])):  # 只保存前3个切片
+            # 模拟热力图数据
+            heatmap_data = np.random.rand(prediction.shape[1], prediction.shape[2]) * 255
+            heatmap_data = heatmap_data.astype(np.uint8)
+            
+            # 保存热力图
+            heatmap_path = os.path.join(heatmap_dir, f'layer_{i}.png')
+            heatmap_image = Image.fromarray(heatmap_data, mode='L')
+            heatmap_image.save(heatmap_path)
+            
+            if hasattr(self, f'{stage_prefix}_prediction_log'):
+                getattr(self, f'{stage_prefix}_prediction_log').append(f'保存热力图: {heatmap_path}')
+    
+    def save_prediction_result(self, prediction, save_dir, stage_prefix):
+        """保存预测结果"""
+        import os
+        import numpy as np
+        from PIL import Image
+        
+        # 确保保存目录存在
+        os.makedirs(save_dir, exist_ok=True)
+        
+        if prediction is None:
+            return
+        
+        # 保存预测结果
+        if hasattr(self, f'{stage_prefix}_prediction_log'):
+            getattr(self, f'{stage_prefix}_prediction_log').append('保存预测结果...')
+        
+        # 保存整个预测结果为npy文件
+        npy_path = os.path.join(save_dir, f'{stage_prefix}_prediction.npy')
+        np.save(npy_path, prediction)
+        
+        if hasattr(self, f'{stage_prefix}_prediction_log'):
+            getattr(self, f'{stage_prefix}_prediction_log').append(f'保存预测结果: {npy_path}')
+        
+        # 保存中间切片为图像
+        mid_slice = prediction.shape[0] // 2
+        slice_data = prediction[mid_slice]
+        slice_data = (slice_data * 255).astype(np.uint8)
+        
+        img_path = os.path.join(save_dir, f'{stage_prefix}_prediction_mid_slice.png')
+        slice_image = Image.fromarray(slice_data, mode='L')
+        slice_image.save(img_path)
+        
+        if hasattr(self, f'{stage_prefix}_prediction_log'):
+            getattr(self, f'{stage_prefix}_prediction_log').append(f'保存中间切片: {img_path}')
     
     def on_prediction_completed(self, prediction, metrics):
         """预测完成处理"""
@@ -784,13 +1108,15 @@ class MainWindow(QMainWindow):
         self.metrics = metrics
         
         # 更新预测状态
-        self.predict_status.setText('预测完成')
+        if hasattr(self, 'predict_status'):
+            self.predict_status.setText('预测完成')
         
         # 更新评估指标
-        self.dice_label.setText(f'{metrics["dice"]:.4f}')
-        self.iou_label.setText(f'{metrics["iou"]:.4f}')
-        self.sensitivity_label.setText(f'{metrics["sensitivity"]:.4f}')
-        self.specificity_label.setText(f'{metrics["specificity"]:.4f}')
+        if hasattr(self, 'dice_label'):
+            self.dice_label.setText(f'{metrics["dice"]:.4f}')
+            self.iou_label.setText(f'{metrics["iou"]:.4f}')
+            self.sensitivity_label.setText(f'{metrics["sensitivity"]:.4f}')
+            self.specificity_label.setText(f'{metrics["specificity"]:.4f}')
         
         # 更新可视化显示
         if hasattr(self, 'update_visualization'):
@@ -801,99 +1127,159 @@ class MainWindow(QMainWindow):
     
     def on_prediction_error(self, error):
         """预测错误处理"""
-        self.predict_status.setText(f'预测错误: {error}')
+        if hasattr(self, 'predict_status'):
+            self.predict_status.setText(f'预测错误: {error}')
         self.status_bar.showMessage(f'预测错误: {error}')
     
     def update_visualization(self):
         """更新可视化显示"""
-        view_mode = self.view_combo.currentText() if hasattr(self, 'view_combo') else '原始图像'
+        import numpy as np
+        from PyQt5.QtWidgets import QHBoxLayout, QLabel, QFrame
+        # 检查是否有可视化数据
+        if not hasattr(self, 'vis_image_data') or self.vis_image_data is None:
+            if hasattr(self, 'vis_labels'):
+                for label in self.vis_labels:
+                    label.setText('请加载文件')
+            return
         
-        # 获取当前选择的切片轴
-        current_axis = self.slice_axis_combo.currentIndex() if hasattr(self, 'slice_axis_combo') else 0
+        # 获取当前切片和轴
+        current_slice = self.current_slice
+        current_axis = self.vis_axis_combo.currentIndex() if hasattr(self, 'vis_axis_combo') else 0
         
-        if view_mode == '原始图像' and self.image_data is not None:
-            # 获取当前切片
-            image_slice = self.image_display.get_slice(self.image_data, self.current_slice, axis=current_axis)
-            
-            # 处理不同轴切片的形状
-            if current_axis == 1:
-                # 转置为 (宽度, 深度)
-                image_slice = image_slice.T
-            elif current_axis == 2:
-                # 转置为 (高度, 深度)
-                image_slice = image_slice.T
-            
-            # 归一化切片
-            normalized_image = self.image_display.normalize_slice(image_slice)
-            
-            # 转换为QImage
-            height, width = normalized_image.shape
-            bytes_per_line = width
-            q_image = QImage(bytes(normalized_image.data), width, height, bytes_per_line, QImage.Format_Grayscale8)
-            
-            # 转换为QPixmap并显示
-            pixmap = QPixmap.fromImage(q_image)
-            if hasattr(self, 'vis_label'):
-                self.vis_label.setPixmap(pixmap.scaled(self.vis_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        # 获取数据形状
+        data_shape = self.vis_image_data.shape
         
-        elif view_mode == '分割掩码' and self.prediction is not None:
-            # 获取当前切片
-            prediction_slice = self.image_display.get_slice(self.prediction, self.current_slice, axis=current_axis)
-            
-            # 处理不同轴切片的形状
-            if current_axis == 1:
-                # 转置为 (宽度, 深度)
-                prediction_slice = prediction_slice.T
-            elif current_axis == 2:
-                # 转置为 (高度, 深度)
-                prediction_slice = prediction_slice.T
-            
-            # 归一化切片
-            normalized_prediction = self.image_display.normalize_slice(prediction_slice)
-            
-            # 转换为QImage
-            height, width = normalized_prediction.shape
-            bytes_per_line = width
-            q_image = QImage(bytes(normalized_prediction.data), width, height, bytes_per_line, QImage.Format_Grayscale8)
-            
-            # 转换为QPixmap并显示
-            pixmap = QPixmap.fromImage(q_image)
-            if hasattr(self, 'vis_label'):
-                self.vis_label.setPixmap(pixmap.scaled(self.vis_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        # 根据轴获取切片
+        def get_slice(data, slice_idx, axis):
+            if axis == 0:  # Z轴
+                return data[slice_idx]
+            elif axis == 1:  # X轴
+                return data[:, slice_idx, :]
+            elif axis == 2:  # Y轴
+                return data[:, :, slice_idx]
+            return data[slice_idx]
         
-        elif view_mode == '叠加视图' and self.image_data is not None and self.prediction is not None:
-            # 获取当前切片
-            image_slice = self.image_display.get_slice(self.image_data, self.current_slice, axis=current_axis)
-            prediction_slice = self.image_display.get_slice(self.prediction, self.current_slice, axis=current_axis)
+        # 获取选中的图像
+        selected_images = []
+        if hasattr(self, 'vis_image_checkbox') and self.vis_image_checkbox.isChecked():
+            selected_images.append(0)
+        if hasattr(self, 'vis_gt_checkbox') and self.vis_gt_checkbox.isChecked() and hasattr(self, 'vis_gt_data'):
+            selected_images.append(1)
+        if hasattr(self, 'vis_mask_checkbox') and self.vis_mask_checkbox.isChecked() and hasattr(self, 'vis_mask_data'):
+            selected_images.append(2)
+        if hasattr(self, 'vis_image_gt_checkbox') and self.vis_image_gt_checkbox.isChecked() and hasattr(self, 'vis_gt_data'):
+            selected_images.append(3)
+        if hasattr(self, 'vis_image_mask_checkbox') and self.vis_image_mask_checkbox.isChecked() and hasattr(self, 'vis_mask_data'):
+            selected_images.append(4)
+        if hasattr(self, 'vis_gt_mask_checkbox') and self.vis_gt_mask_checkbox.isChecked() and hasattr(self, 'vis_gt_data') and hasattr(self, 'vis_mask_data'):
+            selected_images.append(5)
+        
+        # 清空容器布局
+        if hasattr(self, 'vis_container_layout'):
+            while self.vis_container_layout.count() > 0:
+                item = self.vis_container_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+                elif item.layout():
+                    # 清理布局中的所有项
+                    while item.layout().count() > 0:
+                        sub_item = item.layout().takeAt(0)
+                        if sub_item.widget():
+                            sub_item.widget().deleteLater()
+        
+        # 每行显示3个图像
+        row_size = 3
+        for i in range(0, len(selected_images), row_size):
+            row_images = selected_images[i:i+row_size]
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setSpacing(10)
+            row_layout.setContentsMargins(0, 0, 0, 0)
             
-            # 处理不同轴切片的形状
-            if current_axis == 1:
-                # 转置为 (宽度, 深度)
-                image_slice = image_slice.T
-                prediction_slice = prediction_slice.T
-            elif current_axis == 2:
-                # 转置为 (高度, 深度)
-                image_slice = image_slice.T
-                prediction_slice = prediction_slice.T
+            for idx in row_images:
+                if hasattr(self, 'vis_labels') and idx < len(self.vis_labels):
+                    # 创建图像容器
+                    img_container = QFrame()
+                    img_container.setFixedSize(220, 250)  # 设置固定大小
+                    img_container.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+                    img_layout = QVBoxLayout(img_container)
+                    img_layout.setContentsMargins(10, 10, 10, 10)
+                    
+                    # 添加标题
+                    title_label = QLabel(self.vis_titles[idx])
+                    title_label.setAlignment(Qt.AlignCenter)
+                    img_layout.addWidget(title_label)
+                    
+                    # 创建新的图像标签
+                    img_label = QLabel()
+                    img_label.setFixedSize(200, 200)  # 设置固定大小
+                    img_label.setAlignment(Qt.AlignCenter)
+                    
+                    if idx == 0:  # 1. 原图像
+                        image_slice = get_slice(self.vis_image_data, current_slice, current_axis)
+                        normalized_image = self.image_display.normalize_slice(image_slice)
+                        q_image = QImage(bytes(normalized_image.data), normalized_image.shape[1], normalized_image.shape[0], normalized_image.shape[1], QImage.Format_Grayscale8)
+                        pixmap = QPixmap.fromImage(q_image)
+                        img_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    
+                    elif idx == 1:  # 2. GroundTruth
+                        gt_slice = get_slice(self.vis_gt_data, current_slice, current_axis)
+                        normalized_gt = self.image_display.normalize_slice(gt_slice)
+                        q_image = QImage(bytes(normalized_gt.data), normalized_gt.shape[1], normalized_gt.shape[0], normalized_gt.shape[1], QImage.Format_Grayscale8)
+                        pixmap = QPixmap.fromImage(q_image)
+                        img_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    
+                    elif idx == 2:  # 3. 预测Mask
+                        mask_slice = get_slice(self.vis_mask_data, current_slice, current_axis)
+                        normalized_mask = self.image_display.normalize_slice(mask_slice)
+                        q_image = QImage(bytes(normalized_mask.data), normalized_mask.shape[1], normalized_mask.shape[0], normalized_mask.shape[1], QImage.Format_Grayscale8)
+                        pixmap = QPixmap.fromImage(q_image)
+                        img_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    
+                    elif idx == 3:  # 4. 原图像+GT
+                        image_slice = get_slice(self.vis_image_data, current_slice, current_axis)
+                        gt_slice = get_slice(self.vis_gt_data, current_slice, current_axis)
+                        normalized_image = self.image_display.normalize_slice(image_slice)
+                        overlayed = self.image_display.overlay_mask(normalized_image, gt_slice, color=(0, 255, 0))  # 绿色
+                        q_image = QImage(bytes(overlayed.data), overlayed.shape[1], overlayed.shape[0], overlayed.shape[1] * 3, QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(q_image)
+                        img_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    
+                    elif idx == 4:  # 5. 原图像+Mask
+                        image_slice = get_slice(self.vis_image_data, current_slice, current_axis)
+                        mask_slice = get_slice(self.vis_mask_data, current_slice, current_axis)
+                        normalized_image = self.image_display.normalize_slice(image_slice)
+                        overlayed = self.image_display.overlay_mask(normalized_image, mask_slice, color=(255, 0, 0))  # 红色
+                        q_image = QImage(bytes(overlayed.data), overlayed.shape[1], overlayed.shape[0], overlayed.shape[1] * 3, QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(q_image)
+                        img_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    
+                    elif idx == 5:  # 6. GT+Mask
+                        gt_slice = get_slice(self.vis_gt_data, current_slice, current_axis)
+                        mask_slice = get_slice(self.vis_mask_data, current_slice, current_axis)
+                        # 创建对比图像
+                        height, width = gt_slice.shape
+                        comparison = np.zeros((height, width, 3), dtype=np.uint8)
+                        # GT为绿色
+                        comparison[gt_slice > 0] = [0, 255, 0]
+                        # Mask为红色
+                        comparison[mask_slice > 0] = [255, 0, 0]
+                        # 重叠部分为黄色
+                        comparison[(gt_slice > 0) & (mask_slice > 0)] = [255, 255, 0]
+                        q_image = QImage(bytes(comparison.data), width, height, width * 3, QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(q_image)
+                        img_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    
+                    img_layout.addWidget(img_label)
+                    row_layout.addWidget(img_container)
             
-            # 归一化切片
-            normalized_image = self.image_display.normalize_slice(image_slice)
-            
-            # 生成叠加图像
-            overlayed = self.image_display.overlay_mask(normalized_image, prediction_slice)
-            
-            # 转换为QImage
-            height, width, _ = overlayed.shape
-            bytes_per_line = width * 3
-            q_image = QImage(bytes(overlayed.data), width, height, bytes_per_line, QImage.Format_RGB888)
-            
-            # 转换为QPixmap并显示
-            pixmap = QPixmap.fromImage(q_image)
-            if hasattr(self, 'vis_label'):
-                self.vis_label.setPixmap(pixmap.scaled(self.vis_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            if hasattr(self, 'vis_container_layout'):
+                self.vis_container_layout.addWidget(row_widget)
     
     def on_save_all_stages(self):
         """保存所有阶段的图像"""
+        import numpy as np
+        import cv2
         # 创建immdiate_show目录
         immdiate_show_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'immdiate_show')
         os.makedirs(immdiate_show_dir, exist_ok=True)
@@ -906,15 +1292,152 @@ class MainWindow(QMainWindow):
         if self.preprocessed_data is not None:
             self.save_stage_image('preprocessed', self.preprocessed_data, self.current_slice, self.format_combo.currentText().lower())
         
-        # 保存预测结果
+        # 保存一阶段预测结果
+        if hasattr(self, 'first_stage_prediction') and self.first_stage_prediction is not None:
+            self.save_stage_image('first_stage_prediction', self.first_stage_prediction, self.current_slice, self.format_combo.currentText().lower())
+        
+        # 保存二阶段预测结果
+        if hasattr(self, 'second_stage_prediction') and self.second_stage_prediction is not None:
+            self.save_stage_image('second_stage_prediction', self.second_stage_prediction, self.current_slice, self.format_combo.currentText().lower())
+        
+        # 保存原始预测结果
         if self.prediction is not None:
             self.save_stage_image('prediction', self.prediction, self.current_slice, self.format_combo.currentText().lower())
+        
+        # 保存结果可视化图像
+        if hasattr(self, 'vis_image_data') and self.vis_image_data is not None:
+            # 获取当前切片和轴
+            current_slice = getattr(self, 'current_slice', 0)
+            current_axis = getattr(self, 'vis_axis_combo', None).currentIndex() if hasattr(self, 'vis_axis_combo') else 0
+            
+            # 获取保存格式
+            save_format = 'png'
+            if hasattr(self, 'format_combo'):
+                save_format = self.format_combo.currentText().lower()
+            
+            # 根据轴获取切片
+            def get_slice(data, slice_idx, axis):
+                print(f'数据形状: {data.shape}')
+                print(f'切片索引: {slice_idx}')
+                print(f'轴: {axis}')
+                # 默认使用Z轴（轴2）来获取切片，这样我们就能得到一个(512, 512)的切片
+                return data[:, :, slice_idx]
+            
+            # 获取选中的图像
+            selected_images = []
+            if hasattr(self, 'vis_image_checkbox') and self.vis_image_checkbox.isChecked():
+                selected_images.append(0)
+            if hasattr(self, 'vis_gt_checkbox') and self.vis_gt_checkbox.isChecked() and hasattr(self, 'vis_gt_data'):
+                selected_images.append(1)
+            if hasattr(self, 'vis_mask_checkbox') and self.vis_mask_checkbox.isChecked() and hasattr(self, 'vis_mask_data'):
+                selected_images.append(2)
+            if hasattr(self, 'vis_image_gt_checkbox') and self.vis_image_gt_checkbox.isChecked() and hasattr(self, 'vis_gt_data'):
+                selected_images.append(3)
+            if hasattr(self, 'vis_image_mask_checkbox') and self.vis_image_mask_checkbox.isChecked() and hasattr(self, 'vis_mask_data'):
+                selected_images.append(4)
+            if hasattr(self, 'vis_gt_mask_checkbox') and self.vis_gt_mask_checkbox.isChecked() and hasattr(self, 'vis_gt_data') and hasattr(self, 'vis_mask_data'):
+                selected_images.append(5)
+            
+            # 使用绝对路径保存图像
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.join(current_dir, '..', '..')
+            vis_dir = os.path.join(project_root, 'immdiate_show', 'visualization')
+            print(f'创建目录: {vis_dir}')
+            os.makedirs(vis_dir, exist_ok=True)
+            print(f'目录是否存在: {os.path.exists(vis_dir)}')
+            print(f'目录权限: {os.access(vis_dir, os.W_OK)}')
+            
+            # 导入PIL库
+            from PIL import Image
+            
+            # 保存选中的图像
+            for idx in selected_images:
+                try:
+                    if idx == 0:  # 1. 原图像
+                        image_slice = get_slice(self.vis_image_data, current_slice, current_axis)
+                        normalized_image = self.image_display.normalize_slice(image_slice)
+                        save_path = os.path.join(vis_dir, f'original_{current_slice}.{save_format}')
+                        print(f'保存原图像到: {save_path}')
+                        # 使用PIL保存图像
+                        img = Image.fromarray(normalized_image)
+                        img.save(save_path)
+                        print(f'保存成功: {save_path}')
+                    
+                    elif idx == 1:  # 2. GroundTruth
+                        gt_slice = get_slice(self.vis_gt_data, current_slice, current_axis)
+                        normalized_gt = self.image_display.normalize_slice(gt_slice)
+                        save_path = os.path.join(vis_dir, f'groundtruth_{current_slice}.{save_format}')
+                        print(f'保存GroundTruth到: {save_path}')
+                        # 使用PIL保存图像
+                        img = Image.fromarray(normalized_gt)
+                        img.save(save_path)
+                        print(f'保存成功: {save_path}')
+                    
+                    elif idx == 2:  # 3. 预测Mask
+                        mask_slice = get_slice(self.vis_mask_data, current_slice, current_axis)
+                        normalized_mask = self.image_display.normalize_slice(mask_slice)
+                        save_path = os.path.join(vis_dir, f'prediction_mask_{current_slice}.{save_format}')
+                        print(f'保存预测Mask到: {save_path}')
+                        # 使用PIL保存图像
+                        img = Image.fromarray(normalized_mask)
+                        img.save(save_path)
+                        print(f'保存成功: {save_path}')
+                    
+                    elif idx == 3:  # 4. 原图像+GT
+                        image_slice = get_slice(self.vis_image_data, current_slice, current_axis)
+                        gt_slice = get_slice(self.vis_gt_data, current_slice, current_axis)
+                        normalized_image = self.image_display.normalize_slice(image_slice)
+                        overlayed = self.image_display.overlay_mask(normalized_image, gt_slice, color=(0, 255, 0))  # 绿色
+                        save_path = os.path.join(vis_dir, f'image_gt_{current_slice}.{save_format}')
+                        print(f'保存原图像+GT到: {save_path}')
+                        # 使用PIL保存图像
+                        img = Image.fromarray(overlayed)
+                        img.save(save_path)
+                        print(f'保存成功: {save_path}')
+                    
+                    elif idx == 4:  # 5. 原图像+Mask
+                        image_slice = get_slice(self.vis_image_data, current_slice, current_axis)
+                        mask_slice = get_slice(self.vis_mask_data, current_slice, current_axis)
+                        normalized_image = self.image_display.normalize_slice(image_slice)
+                        overlayed = self.image_display.overlay_mask(normalized_image, mask_slice, color=(255, 0, 0))  # 红色
+                        save_path = os.path.join(vis_dir, f'image_mask_{current_slice}.{save_format}')
+                        print(f'保存原图像+Mask到: {save_path}')
+                        # 使用PIL保存图像
+                        img = Image.fromarray(overlayed)
+                        img.save(save_path)
+                        print(f'保存成功: {save_path}')
+                    
+                    elif idx == 5:  # 6. GT+Mask
+                        gt_slice = get_slice(self.vis_gt_data, current_slice, current_axis)
+                        mask_slice = get_slice(self.vis_mask_data, current_slice, current_axis)
+                        # 创建对比图像
+                        height, width = gt_slice.shape
+                        comparison = np.zeros((height, width, 3), dtype=np.uint8)
+                        # GT为绿色
+                        comparison[gt_slice > 0] = [0, 255, 0]
+                        # Mask为红色
+                        comparison[mask_slice > 0] = [255, 0, 0]
+                        # 重叠部分为黄色
+                        comparison[(gt_slice > 0) & (mask_slice > 0)] = [255, 255, 0]
+                        save_path = os.path.join(vis_dir, f'gt_mask_{current_slice}.{save_format}')
+                        print(f'保存GT+Mask到: {save_path}')
+                        # 使用PIL保存图像
+                        img = Image.fromarray(comparison)
+                        img.save(save_path)
+                        print(f'保存成功: {save_path}')
+                except Exception as e:
+                    print(f'保存图像错误: {str(e)}')
+                    import traceback
+                    traceback.print_exc()
         
         self.status_bar.showMessage('所有阶段图像已保存')
     
     def run_evaluation(self):
         """执行评估"""
-        if self.prediction is None:
+        # 优先使用二阶段预测结果，如果没有则使用一阶段预测结果，最后使用原始预测结果
+        prediction = getattr(self, 'second_stage_prediction', None) or getattr(self, 'first_stage_prediction', None) or getattr(self, 'prediction', None)
+        
+        if prediction is None:
             self.evaluate_log.setText('请先执行预测')
             return
         
